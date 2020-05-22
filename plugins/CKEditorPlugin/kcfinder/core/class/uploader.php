@@ -17,7 +17,7 @@ namespace kcfinder;
 class uploader {
 
 /** Release version */
-    const VERSION = "3.12";
+    const VERSION = "3.20-test2";
 
 /** Config session-overrided settings
   * @var array */
@@ -103,63 +103,14 @@ class uploader {
         )
             $this->cms = $_GET['cms'];
 
-		// LINKING UPLOADED FILE
+        // LINKING UPLOADED FILE
         if (count($_FILES))
             $this->file = &$_FILES[key($_FILES)];
 
-        // LOAD DEFAULT CONFIGURATION
-        require "conf/config.php";
-
-        // SETTING UP SESSION
-        if (!session_id()) {
-            if (isset($_CONFIG['_sessionLifetime']))
-                ini_set('session.gc_maxlifetime', $_CONFIG['_sessionLifetime'] * 60);
-            if (isset($_CONFIG['_sessionDir']))
-                ini_set('session.save_path', $_CONFIG['_sessionDir']);
-            if (isset($_CONFIG['_sessionDomain']))
-                ini_set('session.cookie_domain', $_CONFIG['_sessionDomain']);
-            session_start();
-        }
-
-        // LOAD SESSION CONFIGURATION IF EXISTS
-        $this->config = $_CONFIG;
-        $sessVar = "_sessionVar";
-        if (isset($_CONFIG[$sessVar])) {
-
-            $sessVar = $_CONFIG[$sessVar];
-
-            if (!isset($_SESSION[$sessVar]))
-                $_SESSION[$sessVar] = array();
-
-            $sessVar = &$_SESSION[$sessVar];
-
-            if (!is_array($sessVar))
-                $sessVar = array();
-
-            foreach ($sessVar as $key => $val)
-                if ((substr($key, 0, 1) != "_") && isset($_CONFIG[$key]))
-                    $this->config[$key] = $val;
-
-            if (!isset($sessVar['self']))
-                $sessVar['self'] = array();
-
-            $this->session = &$sessVar['self'];
-
-        } else
-            $this->session = &$_SESSION;
-
-        // SECURING THE SESSION
-        $stamp = array(
-            'ip' => $_SERVER['REMOTE_ADDR'],
-            'agent' => md5($_SERVER['HTTP_USER_AGENT'])
-        );
-        if (!isset($this->session['stamp']))
-            $this->session['stamp'] = $stamp;
-        elseif (!is_array($this->session['stamp']) || ($this->session['stamp'] !== $stamp)) {
-            if ($this->session['stamp']['ip'] === $stamp['ip'])
-                session_destroy();
-            die;
-        }
+        // CONFIG & SESSION SETUP
+        $session = new session("conf/config.php");
+        $this->config = $session->getConfig();
+        $this->session = &$session->values;
 
         // IMAGE DRIVER INIT
         if (isset($this->config['imageDriversPriority'])) {
@@ -172,7 +123,7 @@ class uploader {
         if ((!isset($driver) || ($driver === false)) &&
             (image::getDriver(array($this->imageDriver)) === false)
         )
-            die("Cannot find any of the supported PHP image extensions!");
+            $this->backMsg("Cannot find any of the supported PHP image extensions!");
 
         // WATERMARK INIT
         if (isset($this->config['watermark']) && is_string($this->config['watermark']))
@@ -228,7 +179,7 @@ class uploader {
         } elseif ($this->config['uploadURL'] == "/") {
             $this->config['uploadDir'] = strlen($this->config['uploadDir'])
                 ? path::normalize($this->config['uploadDir'])
-                : path::normalize($_SERVER['DOCUMENT_ROOT']);
+                : path::normalize(realpath($_SERVER['DOCUMENT_ROOT']));
             $this->typeDir = "{$this->config['uploadDir']}/{$this->type}";
             $this->typeURL = "/{$this->type}";
 
@@ -261,8 +212,10 @@ class uploader {
                     $this->opener['name'] = false;
                 else
                     $this->opener['TinyMCE'] = array('field' => $_GET['field']);
+            } elseif ($_GET['opener'] == "ckeditor" && isset($_GET['responseType'])) {
+                // used for pasted and dragged content
+                $this->opener['responseType'] = $_GET['responseType'];
             }
-
         } else
             $this->opener['name'] = false;
 
@@ -757,13 +710,22 @@ class uploader {
         if (!isset($js))
             $js = $this->callBack_default($url, $message);
 
-        header("Content-Type: text/html; charset={$this->charset}");
-        echo "<html><body>$js</body></html>";
+        if (isset($this->opener['responseType']) && $this->opener['responseType'] == 'json') {
+            header("Content-Type: text/javascript; charset={$this->charset}");
+            echo $js;
+        } else {
+            header("Content-Type: text/html; charset={$this->charset}");
+            echo "<html><body>$js</body></html>";
+        }
     }
 
     protected function callBack_ckeditor($url, $message) {
-        $CKfuncNum = isset($this->opener['CKEditor']['funcNum']) ? $this->opener['CKEditor']['funcNum'] : 0;
-        if (!$CKfuncNum) $CKfuncNum = 0;
+        if (!isset($this->opener['CKEditor']['funcNum'])) {
+            // ckeditor pasted or dragged content
+            return "{\"fileName\":\"image\",\"uploaded\":1,\"url\":\"$url\"}";
+        }
+        $CKfuncNum = $this->opener['CKEditor']['funcNum'];
+
         return "<script type='text/javascript'>
 var par = window.parent,
     op = window.opener,
@@ -813,5 +775,3 @@ if (window.opener) window.close();
         return file_get_contents("conf/upload.htaccess");
     }
 }
-
-?>
