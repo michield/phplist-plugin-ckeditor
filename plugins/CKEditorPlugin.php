@@ -249,7 +249,7 @@ filebrowserUploadMethod: 'form',
 filebrowserBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcFilesDir&cms=phplist',
 filebrowserImageBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcImageDir&cms=phplist',
 filebrowserUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcFilesDir&cms=phplist',
-filebrowserImageUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcImageDir&cms=phplist',
+filebrowserImageUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcImageDir&cms=phplist'
 END;
             }
         }
