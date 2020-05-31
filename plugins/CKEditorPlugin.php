@@ -231,14 +231,13 @@ END;
             } else {
                 $kcImageDir = getConfig('kcfinder_image_directory');
                 $kcFilesDir = getConfig('kcfinder_files_directory');
-                $kcFlashDir = getConfig('kcfinder_flash_directory');
+                $kcFlashDir = false;
                 $_SESSION['KCFINDER'] = array(
                     'disabled' => false,
                     'uploadURL' => sprintf('%s://%s/%s', $public_scheme, $website, ltrim(UPLOADIMAGES_DIR, '/')),
                     'uploadDir' => $kcUploadDir,
                     'types' => array(
                         $kcFilesDir => '',
-                        $kcFlashDir => 'swf',
                         $kcImageDir => '*img',
                     ),
                     'imageDriversPriority' => 'gd',
@@ -247,12 +246,10 @@ END;
                 $kcPath = rtrim(getConfig('kcfinder_path'), '/');
                 $settings[] = <<<END
 filebrowserUploadMethod: 'form',
-filebrowserBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcFilesDir',
-filebrowserImageBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcImageDir',
-filebrowserFlashBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcFlashDir',
-filebrowserUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcFilesDir',
-filebrowserImageUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcImageDir',
-filebrowserFlashUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcFlashDir'
+filebrowserBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcFilesDir&cms=phplist',
+filebrowserImageBrowseUrl: '$kcPath/browse.php?opener=ckeditor&type=$kcImageDir&cms=phplist',
+filebrowserUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcFilesDir&cms=phplist',
+filebrowserImageUploadUrl: '$kcPath/upload.php?opener=ckeditor&type=$kcImageDir&cms=phplist',
 END;
             }
         }
@@ -418,6 +415,9 @@ END;
         list($ckScript, $html) = $this->editorScript($fieldname, $width, $height);
 
         $ckeditorUrl = getConfig('ckeditor_url');
+        if (empty($ckeditorUrl)) {
+            $ckeditorUrl = '/plugins/CKEditorPlugin/ckeditor/ckeditor.js';
+        }
 
         return $this->textArea($fieldname, $content)
             . $html
@@ -442,6 +442,9 @@ END;
         list($ckScript, $html) = $this->editorScript($fieldname, $width, $height, $toolbar);
 
         $ckeditorUrl = getConfig('ckeditor_url');
+        if (empty($ckeditorUrl)) {
+            $ckeditorUrl = '/plugins/CKEditorPlugin/ckeditor/ckeditor.js';
+        }
         $host = parse_url($ckeditorUrl, PHP_URL_HOST);
 
         $script = ($host == null || $host == $_SERVER['HTTP_HOST'])
